@@ -41,33 +41,28 @@ def process_file(
     is_video = ext in VIDEO_EXTENSIONS and has_video_stream(input_path)
 
     # --- Step 1: Transcribe ---
+    # Always convert to MP3 first — normalises all formats into one known-good
+    # path. This matches the proven bash script behaviour: no conditionals,
+    # no format-compatibility surprises.
     if transcript_path.exists():
         log.skip(f"Transcript already exists: {transcript_path.name}")
     else:
-        if is_video:
-            # Extract audio to temp MP3 first
-            audio_tmp = out / "audio.mp3"
-            if audio_tmp.exists():
-                log.skip(f"Audio already extracted: {audio_tmp.name}")
-            else:
-                log.log("Extracting audio...")
-                extract_audio(input_path, audio_tmp)
-                log.log(f"Audio extracted: {_file_size(audio_tmp)}")
-            audio_for_transcription = audio_tmp
+        audio_tmp = out / "audio.mp3"
+        if audio_tmp.exists():
+            log.skip(f"Audio already extracted: {audio_tmp.name}")
         else:
-            audio_for_transcription = input_path
+            log.log("Extracting audio...")
+            extract_audio(input_path, audio_tmp)
+            log.log(f"Audio extracted: {_file_size(audio_tmp)}")
 
         log.log(f"Transcribing with {backend}...")
-        text = transcribe(audio_for_transcription, backend=backend, language=language)
+        text = transcribe(audio_tmp, backend=backend, language=language)
         transcript_path.write_text(text, encoding="utf-8")
         word_count = len(text.split())
         log.log(f"Transcript: {word_count} words")
 
         # Clean up intermediate audio
-        if is_video:
-            audio_tmp = out / "audio.mp3"
-            if audio_tmp.exists():
-                audio_tmp.unlink()
+        audio_tmp.unlink(missing_ok=True)
 
     # --- Step 2: Extract frames (video only) ---
     frames_dir = out / "frames"
