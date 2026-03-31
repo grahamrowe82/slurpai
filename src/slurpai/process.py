@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from . import __version__
 from .ffmpeg import extract_audio, extract_frames, has_video_stream
 from .log import ProcessLog
 from .transcribe import transcribe
@@ -32,7 +33,7 @@ def process_file(
     out.mkdir(parents=True, exist_ok=True)
 
     log = ProcessLog(out / "process.log")
-    log.log(f"=== Ingestible v0.1.0 ===")
+    log.log(f"=== slurpai v{__version__} ===")
     log.log(f"Input:   {input_path}")
     log.log(f"Output:  {out}/")
     log.log(f"Backend: {backend}")
