@@ -5,7 +5,7 @@ Convert voice notes, videos, and audio files into AI-ready text and images.
 ## Install
 
 ```bash
-pip install ingestible[openai]
+pip install ingestible
 ```
 
 ## Usage
