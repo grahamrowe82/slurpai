@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from ingestible.process import SUPPORTED_EXTENSIONS, process_file
+from slurpai.process import SUPPORTED_EXTENSIONS, process_file
 
 
 def test_supported_extensions_include_common_formats():
@@ -17,7 +17,7 @@ def test_supported_extensions_include_common_formats():
 
 def test_process_audio_file(sample_audio: Path):
     """Process an audio file with mocked transcription."""
-    with patch("ingestible.process.transcribe", return_value="Hello from the test"):
+    with patch("slurpai.process.transcribe", return_value="Hello from the test"):
         out = process_file(sample_audio, backend="openai")
 
     assert out.is_dir()
@@ -36,7 +36,7 @@ def test_process_audio_file(sample_audio: Path):
 
 def test_process_video_file(sample_video: Path):
     """Process a video file with mocked transcription."""
-    with patch("ingestible.process.transcribe", return_value="Video transcript here"):
+    with patch("slurpai.process.transcribe", return_value="Video transcript here"):
         out = process_file(sample_video, backend="openai", frame_interval=1)
 
     assert out.is_dir()
@@ -51,11 +51,11 @@ def test_process_video_file(sample_video: Path):
 
 def test_idempotent_skip(sample_audio: Path):
     """Second run should skip transcription."""
-    with patch("ingestible.process.transcribe", return_value="First run") as mock_t:
+    with patch("slurpai.process.transcribe", return_value="First run") as mock_t:
         process_file(sample_audio, backend="openai")
         assert mock_t.call_count == 1
 
-    with patch("ingestible.process.transcribe", return_value="Second run") as mock_t:
+    with patch("slurpai.process.transcribe", return_value="Second run") as mock_t:
         process_file(sample_audio, backend="openai")
         assert mock_t.call_count == 0  # Should have been skipped
 

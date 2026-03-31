@@ -1,4 +1,4 @@
-"""Core orchestrator — processes a single file through the ingest pipeline."""
+"""Core orchestrator — processes a single file through the slurpai pipeline."""
 
 from __future__ import annotations
 

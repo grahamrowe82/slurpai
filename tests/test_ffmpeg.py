@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from ingestible.ffmpeg import check_ffmpeg, extract_audio, extract_frames, has_video_stream
+from slurpai.ffmpeg import check_ffmpeg, extract_audio, extract_frames, has_video_stream
 
 
 def test_check_ffmpeg():

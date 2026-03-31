@@ -1,4 +1,4 @@
-"""CLI entry point for ingestible."""
+"""CLI entry point for slurpai."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ from . import __version__
 )
 @click.option("--dry-run", is_flag=True, help="Show what would be processed")
 @click.version_option(version=__version__)
-def ingest(
+def slurpai(
     files: tuple[str, ...],
     backend: str | None,
     frame_interval: int,
@@ -55,7 +55,7 @@ def ingest(
     """Convert voice notes, audio files, and videos into text and images."""
     load_dotenv()
 
-    backend = backend or os.getenv("INGESTIBLE_BACKEND", "openai")
+    backend = backend or os.getenv("SLURPAI_BACKEND", "openai")
 
     from .ffmpeg import check_ffmpeg
     from .process import SUPPORTED_EXTENSIONS, process_file

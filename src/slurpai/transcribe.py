@@ -39,7 +39,7 @@ def _transcribe_openai(audio_path: Path, *, language: str) -> str:
     except ImportError:
         raise ImportError(
             "OpenAI backend requires the openai package. "
-            "Install with: pip install ingestible[openai]"
+            "Install with: pip install slurpai"
         )
 
     api_key = os.getenv("OPENAI_API_KEY")
@@ -68,10 +68,10 @@ def _transcribe_faster_whisper(audio_path: Path, *, language: str) -> str:
     except ImportError:
         raise ImportError(
             "Local backend requires faster-whisper. "
-            "Install with: pip install ingestible[local]"
+            "Install with: pip install slurpai[local]"
         )
 
-    model_size = os.getenv("INGESTIBLE_WHISPER_MODEL", "base").strip() or "base"
+    model_size = os.getenv("SLURPAI_WHISPER_MODEL", "base").strip() or "base"
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
     segments, _info = model.transcribe(str(audio_path), language=language)

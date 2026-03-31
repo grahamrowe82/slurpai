@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ingestible"
-version = "0.1.0"
+name = "slurpai"
+version = "0.1.1"
 description = "Convert voice notes, videos, and audio files into AI-ready text and images"
 readme = "README.md"
 license = "MIT"
@@ -29,14 +29,15 @@ classifiers = [
     "Topic :: Text Processing",
 ]
 
-[project.urls]
-Repository = "https://github.com/grahamrowe82/ingestible"
-Issues = "https://github.com/grahamrowe82/ingestible/issues"
 dependencies = [
     "click>=8.0",
     "python-dotenv>=1.0",
     "openai>=1.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/grahamrowe82/slurpai"
+Issues = "https://github.com/grahamrowe82/slurpai/issues"
 
 [project.optional-dependencies]
 local = ["faster-whisper>=0.10"]
@@ -45,10 +46,10 @@ dev = [
 ]
 
 [project.scripts]
-ingest = "ingestible.cli:ingest"
+slurpai = "slurpai.cli:slurpai"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ingestible"]
+packages = ["src/slurpai"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

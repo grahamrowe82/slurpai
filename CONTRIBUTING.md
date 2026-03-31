@@ -1,12 +1,12 @@
-# Contributing to ingestible
+# Contributing to slurpai
 
 Thanks for wanting to help. Here's how to get set up.
 
 ## Development setup
 
 ```bash
-git clone https://github.com/grahamrowe82/ingestible.git
-cd ingestible
+git clone https://github.com/grahamrowe82/slurpai.git
+cd slurpai
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -31,7 +31,7 @@ Tests use ffmpeg to generate tiny test audio/video files — no API keys needed.
 
 ## Reporting bugs
 
-Open an issue at https://github.com/grahamrowe82/ingestible/issues with:
-- What you ran (`ingest ...`)
+Open an issue at https://github.com/grahamrowe82/slurpai/issues with:
+- What you ran (`slurpai ...`)
 - What happened (error message or unexpected output)
 - Your OS and Python version

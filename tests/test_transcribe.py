@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ingestible.transcribe import _extract_text, transcribe
+from slurpai.transcribe import _extract_text, transcribe
 
 
 class TestExtractText:
@@ -32,7 +32,7 @@ class TestExtractText:
 
 
 class TestTranscribeOpenAI:
-    @patch("ingestible.transcribe.OpenAI", create=True)
+    @patch("slurpai.transcribe.OpenAI", create=True)
     def test_calls_api(self, mock_openai_cls, sample_audio: Path, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
@@ -42,9 +42,9 @@ class TestTranscribeOpenAI:
         mock_client.audio.transcriptions.create.return_value = mock_response
 
         # Patch the lazy import inside _transcribe_openai
-        with patch("ingestible.transcribe.OpenAI", return_value=mock_client, create=True):
+        with patch("slurpai.transcribe.OpenAI", return_value=mock_client, create=True):
             # Need to patch at the point of import
-            import ingestible.transcribe as mod
+            import slurpai.transcribe as mod
             with patch.object(mod, "_transcribe_openai") as mock_fn:
                 mock_fn.return_value = "This is the transcript"
                 result = transcribe(sample_audio, backend="openai")
