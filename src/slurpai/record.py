@@ -235,23 +235,50 @@ def check_stale_snapshot() -> str | None:
 # Recording
 # ---------------------------------------------------------------------------
 
+def _detect_microphone() -> str | None:
+    """Auto-detect the built-in microphone name from avfoundation devices."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-f", "avfoundation", "-list_devices", "true", "-i", ""],
+            capture_output=True, text=True, timeout=10,
+        )
+        # Device list is printed to stderr
+        for line in result.stderr.splitlines():
+            # Match lines like "[...] [2] MacBook Air Microphone"
+            lower = line.lower()
+            if "microphone" in lower and ("macbook" in lower or "built-in" in lower):
+                # Extract the device name after the index
+                idx = line.rfind("]")
+                if idx != -1:
+                    return line[idx + 1:].strip()
+    except Exception:
+        pass
+    return None
+
+
 def build_ffmpeg_cmd(output_path: Path) -> list[str]:
     """Build the ffmpeg avfoundation capture command."""
+    mic_name = _detect_microphone()
+    if not mic_name:
+        raise RuntimeError(
+            "Could not detect built-in microphone. "
+            "Run `ffmpeg -f avfoundation -list_devices true -i \"\"` to check available devices."
+        )
+
     return [
         "ffmpeg",
-        # Screen capture
+        # Screen capture + microphone in one avfoundation session
         "-f", "avfoundation",
         "-capture_cursor", "1",
         "-framerate", "5",
-        "-i", "Capture screen 0:none",
-        # System audio (via BlackHole)
+        "-i", f"Capture screen 0:{mic_name}",
+        # System audio (via BlackHole) as separate session
         "-f", "avfoundation",
         "-i", ":BlackHole 2ch",
-        # Microphone
-        "-f", "avfoundation",
-        "-i", ":MacBook Pro Microphone",
-        # Merge system audio + mic into one stereo track
-        "-filter_complex", "[1:a][2:a]amerge=inputs=2[a]",
+        # Merge mic (mono, from input 0) + system audio (stereo, from input 1)
+        # into a stereo downmix: mic on both channels + system L/R
+        "-filter_complex",
+        "[0:a][1:a]amerge=inputs=2,pan=stereo|c0=c0+c1|c1=c0+c2[a]",
         "-map", "0:v",
         "-map", "[a]",
         # Video: low-overhead screen recording
@@ -347,6 +374,10 @@ def run_recording(output_path: Path) -> Path:
             _ffmpeg_process.kill()
             _ffmpeg_process.wait()
 
+    # Capture stderr before releasing the process
+    ffmpeg_stderr = ""
+    if _ffmpeg_process.stderr:
+        ffmpeg_stderr = _ffmpeg_process.stderr.read().decode(errors="replace")
     _ffmpeg_process = None
 
     # Restore audio
@@ -354,7 +385,12 @@ def run_recording(output_path: Path) -> Path:
 
     # Verify output
     if not output_path.exists() or output_path.stat().st_size == 0:
-        raise RuntimeError(f"Recording failed — output file is missing or empty: {output_path}")
+        msg = f"Recording failed — output file is missing or empty: {output_path}"
+        if ffmpeg_stderr:
+            # Show the last 20 lines of ffmpeg output for diagnosis
+            tail = "\n".join(ffmpeg_stderr.strip().splitlines()[-20:])
+            msg += f"\n\nffmpeg output:\n{tail}"
+        raise RuntimeError(msg)
 
     size_mb = output_path.stat().st_size / (1024 * 1024)
     click.echo(f"\nRecording saved: {output_path} ({size_mb:.1f} MB)")
