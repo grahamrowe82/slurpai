@@ -52,6 +52,25 @@ def extract_frames(input_path: Path, output_dir: Path, *, interval: int = 15) ->
     return len(list(output_dir.glob("frame_*.jpg")))
 
 
+def validate_recording(path: Path) -> None:
+    """Check the recording has video and audio streams via ffprobe."""
+    result = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-show_entries", "stream=codec_type",
+            "-of", "csv=p=0",
+            str(path),
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    streams = result.stdout.strip().splitlines()
+    if "video" not in streams:
+        raise RuntimeError(f"Recording is missing video stream: {path}")
+    if "audio" not in streams:
+        import click
+        click.echo(f"Warning: recording has no audio stream: {path}", err=True)
+
+
 def has_video_stream(input_path: Path) -> bool:
     """Check if file contains a video stream using ffprobe."""
     cmd = [

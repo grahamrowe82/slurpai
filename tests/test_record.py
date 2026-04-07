@@ -241,3 +241,71 @@ def test_run_setup_missing_prerequisites(mock_prereqs):
     """Setup exits with error when prerequisites are missing."""
     with pytest.raises(SystemExit):
         record.run_setup()
+
+
+# ---------------------------------------------------------------------------
+# run_recording
+# ---------------------------------------------------------------------------
+
+
+@patch("slurpai.ffmpeg.validate_recording")
+@patch("slurpai.record.build_ffmpeg_cmd", return_value=["ffmpeg", "fake"])
+@patch("slurpai.record.restore_audio")
+@patch("slurpai.record.snapshot_audio", return_value="MacBook Air Speakers")
+@patch("slurpai.record.subprocess.run")
+def test_run_recording_happy_path(mock_run, mock_snap, mock_restore, mock_cmd, mock_validate, tmp_path):
+    """Successful recording: audio switched, ffmpeg called, audio restored."""
+    output = tmp_path / "test.mp4"
+    output.write_bytes(b"\x00" * 1024)  # dummy file
+
+    # First call is SwitchAudioSource, second is ffmpeg
+    mock_run.side_effect = [
+        MagicMock(returncode=0),  # SwitchAudioSource
+        MagicMock(returncode=0),  # ffmpeg
+    ]
+
+    result = record.run_recording(output)
+
+    assert result == output
+    mock_snap.assert_called_once()
+    mock_restore.assert_called_once()
+    mock_validate.assert_called_once_with(output)
+
+
+@patch("slurpai.record.build_ffmpeg_cmd", return_value=["ffmpeg", "fake"])
+@patch("slurpai.record.restore_audio")
+@patch("slurpai.record.snapshot_audio", return_value="MacBook Air Speakers")
+@patch("slurpai.record.subprocess.run")
+def test_run_recording_no_output_file(mock_run, mock_snap, mock_restore, mock_cmd, tmp_path):
+    """ffmpeg exits but produces no file — RuntimeError raised, audio restored."""
+    output = tmp_path / "test.mp4"
+    # Don't create the file
+
+    mock_run.side_effect = [
+        MagicMock(returncode=0),  # SwitchAudioSource
+        MagicMock(returncode=1),  # ffmpeg
+    ]
+
+    with pytest.raises(RuntimeError, match="missing or empty"):
+        record.run_recording(output)
+
+    mock_restore.assert_called_once()
+
+
+@patch("slurpai.record.build_ffmpeg_cmd", return_value=["ffmpeg", "fake"])
+@patch("slurpai.record.restore_audio")
+@patch("slurpai.record.snapshot_audio", return_value="MacBook Air Speakers")
+@patch("slurpai.record.subprocess.run")
+def test_run_recording_keyboard_interrupt(mock_run, mock_snap, mock_restore, mock_cmd, tmp_path):
+    """Ctrl+C during recording — audio is still restored."""
+    output = tmp_path / "test.mp4"
+
+    mock_run.side_effect = [
+        MagicMock(returncode=0),  # SwitchAudioSource
+        KeyboardInterrupt,        # ffmpeg interrupted
+    ]
+
+    with pytest.raises(KeyboardInterrupt):
+        record.run_recording(output)
+
+    mock_restore.assert_called_once()

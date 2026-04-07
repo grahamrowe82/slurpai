@@ -7,11 +7,9 @@ SlurpAI pipeline.
 
 from __future__ import annotations
 
-import atexit
 import json
 import os
 import shutil
-import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -24,9 +22,6 @@ SNAPSHOT_PATH = SLURPAI_DIR / "audio_snapshot.json"
 SWIFT_SOURCE = Path(__file__).parent / "swift" / "audio_setup.swift"
 SWIFT_BINARY = SLURPAI_DIR / "audio_setup"
 DEVICE_NAME = "SlurpAI Multi-Output"
-
-# Module-level ref so signal handlers can reach the ffmpeg process.
-_ffmpeg_process: subprocess.Popen | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -288,36 +283,20 @@ def build_ffmpeg_cmd(output_path: Path) -> list[str]:
         # Audio: AAC 128k
         "-c:a", "aac",
         "-b:a", "128k",
-        # Fast-start for playback
-        "-movflags", "+faststart",
+        # Fragmented MP4: write moov atom upfront so the file is
+        # always valid even if ffmpeg is interrupted unexpectedly
+        "-movflags", "frag_keyframe+empty_moov",
         str(output_path),
     ]
 
 
-def _graceful_shutdown(signum, _frame):
-    """Signal handler: stop ffmpeg cleanly, restore audio, exit."""
-    global _ffmpeg_process
-    if _ffmpeg_process and _ffmpeg_process.poll() is None:
-        try:
-            _ffmpeg_process.stdin.write(b"q")
-            _ffmpeg_process.stdin.flush()
-            _ffmpeg_process.wait(timeout=5)
-        except Exception:
-            _ffmpeg_process.kill()
-
-    restore_audio(quiet=True)
-    sys.exit(128 + signum)
-
-
 def run_recording(output_path: Path) -> Path:
-    """Run the screen + audio recording. Returns the output file path."""
-    global _ffmpeg_process
+    """Run the screen + audio recording. Returns the output file path.
 
-    # Safety: register cleanup handlers
-    atexit.register(restore_audio, quiet=True)
-    signal.signal(signal.SIGINT, _graceful_shutdown)
-    signal.signal(signal.SIGTERM, _graceful_shutdown)
-    signal.signal(signal.SIGHUP, _graceful_shutdown)
+    ffmpeg gets direct terminal access — the user presses q in ffmpeg's own
+    UI to stop.  Python just blocks on subprocess.run() and handles cleanup.
+    """
+    from .ffmpeg import validate_recording
 
     # Snapshot current audio and switch to Multi-Output Device
     original_device = snapshot_audio()
@@ -334,67 +313,27 @@ def run_recording(output_path: Path) -> Path:
         "(System Settings > Privacy & Security > Screen Recording).\n"
     )
 
-    # Start ffmpeg
     cmd = build_ffmpeg_cmd(output_path)
-    _ffmpeg_process = subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-    )
-
-    click.echo("Recording — press q to stop...\n")
+    click.echo("Recording — press q in this terminal to stop...\n")
 
     try:
-        # Read single characters from stdin to catch 'q'
-        import termios
-        import tty
+        result = subprocess.run(cmd)
+    finally:
+        restore_audio()
 
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            while True:
-                ch = sys.stdin.read(1)
-                if ch.lower() == "q":
-                    break
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    except Exception:
-        # Fallback: just wait for ffmpeg to finish (e.g. in non-TTY context)
-        _ffmpeg_process.wait()
+    if result.returncode != 0:
+        click.echo(f"Warning: ffmpeg exited with code {result.returncode}", err=True)
 
-    # Stop ffmpeg cleanly
-    if _ffmpeg_process.poll() is None:
-        _ffmpeg_process.stdin.write(b"q")
-        _ffmpeg_process.stdin.flush()
-        try:
-            _ffmpeg_process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            _ffmpeg_process.kill()
-            _ffmpeg_process.wait()
-
-    # Capture stderr before releasing the process
-    ffmpeg_stderr = ""
-    if _ffmpeg_process.stderr:
-        ffmpeg_stderr = _ffmpeg_process.stderr.read().decode(errors="replace")
-    _ffmpeg_process = None
-
-    # Restore audio
-    restore_audio()
-
-    # Verify output
     if not output_path.exists() or output_path.stat().st_size == 0:
-        msg = f"Recording failed — output file is missing or empty: {output_path}"
-        if ffmpeg_stderr:
-            # Show the last 20 lines of ffmpeg output for diagnosis
-            tail = "\n".join(ffmpeg_stderr.strip().splitlines()[-20:])
-            msg += f"\n\nffmpeg output:\n{tail}"
-        raise RuntimeError(msg)
+        raise RuntimeError(
+            f"Recording failed — output file is missing or empty: {output_path}\n"
+            f"ffmpeg exit code: {result.returncode}"
+        )
+
+    validate_recording(output_path)
 
     size_mb = output_path.stat().st_size / (1024 * 1024)
     click.echo(f"\nRecording saved: {output_path} ({size_mb:.1f} MB)")
-
     return output_path
 
 
