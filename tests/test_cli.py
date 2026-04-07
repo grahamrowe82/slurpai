@@ -21,7 +21,7 @@ def test_version():
     runner = CliRunner()
     result = runner.invoke(slurpai, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.2" in result.output
+    assert "0.2.0" in result.output
 
 
 def test_dry_run(sample_audio: Path):

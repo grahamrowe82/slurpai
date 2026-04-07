@@ -27,3 +27,8 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Recording test artifacts
+test-*.mp4
+test-run/
+test-audio/
