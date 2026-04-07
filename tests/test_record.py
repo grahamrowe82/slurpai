@@ -160,18 +160,50 @@ def test_check_stale_snapshot_alive_pid(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 
-def test_build_ffmpeg_cmd():
+@patch("slurpai.record._detect_microphone", return_value="MacBook Air Microphone")
+def test_build_ffmpeg_cmd(mock_mic):
     cmd = record.build_ffmpeg_cmd(Path("/tmp/test.mp4"))
+    joined = " ".join(cmd)
 
     assert cmd[0] == "ffmpeg"
-    assert "-f" in cmd
     assert "avfoundation" in cmd
-    assert "BlackHole 2ch" in " ".join(cmd)
+    assert "Capture screen 0:MacBook Air Microphone" in joined
+    assert ":BlackHole 2ch" in joined
+    assert "amerge=inputs=2" in joined
+    assert "pan=stereo" in joined
     assert "ultrafast" in cmd
     assert "/tmp/test.mp4" in cmd
     assert "-framerate" in cmd
     idx = cmd.index("-framerate")
     assert cmd[idx + 1] == "5"
+
+
+@patch("slurpai.record._detect_microphone", return_value=None)
+def test_build_ffmpeg_cmd_no_mic(mock_mic):
+    with pytest.raises(RuntimeError, match="Could not detect built-in microphone"):
+        record.build_ffmpeg_cmd(Path("/tmp/test.mp4"))
+
+
+@patch("slurpai.record.subprocess.run")
+def test_detect_microphone_found(mock_run):
+    mock_run.return_value = MagicMock(
+        stderr=(
+            "[AVFoundation indev @ 0x1] AVFoundation video devices:\n"
+            "[AVFoundation indev @ 0x1] [0] Capture screen 0\n"
+            "[AVFoundation indev @ 0x1] AVFoundation audio devices:\n"
+            "[AVFoundation indev @ 0x1] [0] MacBook Air Microphone\n"
+            "[AVFoundation indev @ 0x1] [1] BlackHole 2ch\n"
+        )
+    )
+    assert record._detect_microphone() == "MacBook Air Microphone"
+
+
+@patch("slurpai.record.subprocess.run")
+def test_detect_microphone_not_found(mock_run):
+    mock_run.return_value = MagicMock(
+        stderr="[AVFoundation indev @ 0x1] [0] BlackHole 2ch\n"
+    )
+    assert record._detect_microphone() is None
 
 
 # ---------------------------------------------------------------------------

@@ -51,6 +51,47 @@ slurpai --backend faster-whisper recording.opus
 slurpai --dry-run *.opus
 ```
 
+## Screen recording (macOS)
+
+Capture your screen, system audio, and microphone in a single command — then automatically transcribe and extract frames.
+
+### Prerequisites
+
+Screen recording requires macOS and a few additional tools:
+
+```bash
+brew install ffmpeg switchaudio-osx
+brew install --cask blackhole-2ch
+```
+
+Then run one-time setup to create the audio routing device:
+
+```bash
+slurpai record --setup
+```
+
+You also need to grant your terminal app **Screen Recording** permission in System Settings > Privacy & Security > Screen Recording. Restart the terminal after granting.
+
+### Recording
+
+```bash
+# Record and auto-process (transcribe + frame extraction)
+slurpai record --name "client-demo"
+
+# Record only, skip processing
+slurpai record --name "raw-capture" --no-process
+
+# Press q to stop recording
+```
+
+### Recovery
+
+If a recording session crashes, your audio output is automatically restored on the next run. You can also restore manually:
+
+```bash
+slurpai record --restore
+```
+
 ## Output
 
 Each file produces a folder alongside it:
@@ -103,6 +144,7 @@ All formats are normalised to MP3 before transcription — this ensures consiste
 
 - Python 3.10+
 - [ffmpeg](https://ffmpeg.org/) on your PATH
+- **For screen recording (macOS only):** [SwitchAudioSource](https://github.com/deweller/switchaudio-osx), [BlackHole](https://existential.audio/blackhole/) — see [Screen recording](#screen-recording-macos)
 
 ## Contributing
 
