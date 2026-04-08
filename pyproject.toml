@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "slurpai"
-version = "0.2.1"
+version = "0.2.2"
 description = "Convert voice notes, videos, and audio files into AI-ready text and images"
 readme = "README.md"
 license = "MIT"
@@ -50,6 +50,9 @@ slurpai = "slurpai.cli:slurpai"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/slurpai"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["*.mp4", "*.mp3", "*.jpg", "*.wav", "*.opus", "*.m4a", "*.ogg", "*.webm", "*.mkv", "*.mov"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
