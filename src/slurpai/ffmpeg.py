@@ -15,12 +15,13 @@ def check_ffmpeg() -> bool:
 def extract_audio(input_path: Path, output_path: Path) -> Path:
     """Extract audio from video as compressed MP3 for API upload.
 
-    Uses mono, 16kHz, 64kbps — compresses a 10-min video from ~60MB to ~5MB,
-    staying under the 25MB Whisper API limit.
+    Uses mono, 16kHz, 28kbps — keeps a 2-hour recording under the 25MB
+    Whisper API limit (~24MB for 2h). Speech quality is unaffected at
+    this bitrate.
     """
     cmd = [
         "ffmpeg", "-y", "-i", str(input_path),
-        "-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k",
+        "-vn", "-ac", "1", "-ar", "16000", "-b:a", "28k",
         str(output_path),
         "-loglevel", "warning",
     ]
